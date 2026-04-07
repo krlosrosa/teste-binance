@@ -1,0 +1,37 @@
+# Portainer + Traefik (mesmo padrão da rede externa "proxy").
+# Variáveis: BINANCE_API_HOST (hostname da API, sem https://), ENCRYPTION_KEY, etc.
+
+version: "3.8"
+
+services:
+  binance-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: binance-backend:latest
+    container_name: binance-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3001}
+      DATABASE_URL: ${DATABASE_URL:-file:/app/data/app.db}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    volumes:
+      - binance_api_data:/app/data
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - "traefik.http.routers.binance-api.rule=Host(`${BINANCE_API_HOST:?set BINANCE_API_HOST}`)"
+      - traefik.http.routers.binance-api.service=binance-api
+      - traefik.http.routers.binance-api.tls.certresolver=letsencrypt
+      - traefik.http.services.binance-api.loadbalancer.server.port=${PORT:-3001}
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  binance_api_data:
