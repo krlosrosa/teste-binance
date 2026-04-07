@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g+
 
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --omit=dev && npm install prisma@5.22.0 --no-save
+# prisma está em dependencies: postinstall (prisma generate) precisa do CLI no runtime
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
