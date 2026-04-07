@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model StddevRobotSettings {
+  id                     String   @id @default("default")
+  stddevPeriod           Int      @default(20)
+  smaPeriod              Int      @default(9)
+  smaDisplacement        Int      @default(1)
+  maxConcurrentPositions Int      @default(3)
+  useRiskPerTradeSizing  Boolean  @default(false)
+  riskUsdPerTrade        String?
+  quoteFallbackUsdt      String   @default("15")
+  updatedAt              DateTime @updatedAt
+}
+
+model ApiKey {
+  id            String         @id @default(cuid())
+  label         String
+  apiKey        String
+  apiSecret     String
+  isTestnet     Boolean        @default(true)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  strategies    Strategy[]
+  stddevRobots  StddevRobot[]
+}
+
+model StddevRobot {
+  id                 String       @id @default(cuid())
+  symbol             String
+  timeframe          String
+  status             String       @default("active")
+  openPositionSide   String       @default("FLAT")
+  entryPrice         String?
+  stopLoss           String?
+  target             String?
+  positionQuantity   String?
+  positionOpenedAt   DateTime?
+  quoteOrderQty      String       @default("15")
+  apiKeyId           String
+  apiKey             ApiKey       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  robotTrades        RobotTrade[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model RobotTrade {
+  id         String      @id @default(cuid())
+  robotId    String
+  robot      StddevRobot @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  symbol     String
+  side       String
+  quantity   String
+  price      String
+  reason     String
+  candleOpen   String?
+  candleHigh   String?
+  candleLow    String?
+  candleClose  String?
+  candleOpenAt DateTime?
+  positionMinPrice String?
+  positionMaxPrice String?
+  executedAt DateTime    @default(now())
+}
+
+model Strategy {
+  id               String           @id @default(cuid())
+  name             String
+  symbol           String
+  timeframe        String
+  configJson       String
+  status           String
+  openPositionSide String           @default("FLAT")
+  quoteOrderQty    String?
+  apiKeyId   String?
+  apiKey     ApiKey?          @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  orders     Order[]
+  trades     Trade[]
+  backtests  BacktestResult[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model Order {
+  id             String    @id @default(cuid())
+  binanceOrderId String?
+  clientOrderId  String?
+  strategyId     String?
+  strategy       Strategy? @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  symbol         String
+  side           String
+  type           String
+  quantity       String
+  price          String?
+  status         String
+  isManual       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Trade {
+  id           String    @id @default(cuid())
+  strategyId   String?
+  strategy     Strategy? @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  symbol       String
+  side         String
+  quantity     String
+  price        String
+  fee          String?
+  isBacktest   Boolean   @default(false)
+  backtestId   String?
+  executedAt   DateTime  @default(now())
+}
+
+model BacktestResult {
+  id          String   @id @default(cuid())
+  strategyId  String
+  strategy    Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  totalPnl    String
+  winRate     Float
+  maxDrawdown Float
+  sharpe      Float?
+  totalTrades Int
+  metricsJson String?
+  createdAt   DateTime @default(now())
+}
