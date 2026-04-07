@@ -5,12 +5,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN npm ci
+# Sem .env na imagem: postinstall (prisma generate) precisa de DATABASE_URL
+RUN DATABASE_URL="file:./prisma/docker-build.db" npm ci
 
 COPY . .
-RUN npx prisma generate && npm run build
+RUN DATABASE_URL="file:./prisma/docker-build.db" npx prisma generate && npm run build
 
 # Runtime
 FROM node:20-bookworm-slim AS runner
@@ -20,10 +21,9 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-# prisma está em dependencies: postinstall (prisma generate) precisa do CLI no runtime
-RUN npm ci --omit=dev
+RUN DATABASE_URL="file:./prisma/docker-build.db" npm ci --omit=dev
 
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
