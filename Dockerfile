@@ -1,4 +1,4 @@
-# Build
+# Build — npm ci sem lifecycle scripts (evita postinstall/prisma antes do ambiente estar pronto)
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
@@ -7,11 +7,14 @@ RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g+
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-# Sem .env na imagem: postinstall (prisma generate) precisa de DATABASE_URL
-RUN DATABASE_URL="file:./prisma/docker-build.db" npm ci
+
+RUN npm ci --ignore-scripts
+
+ENV DATABASE_URL=file:/app/prisma/docker-build.db
+RUN npx prisma generate
 
 COPY . .
-RUN DATABASE_URL="file:./prisma/docker-build.db" npx prisma generate && npm run build
+RUN npm run build
 
 # Runtime
 FROM node:20-bookworm-slim AS runner
@@ -23,7 +26,11 @@ RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g+
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN DATABASE_URL="file:./prisma/docker-build.db" npm ci --omit=dev
+
+RUN npm ci --omit=dev --ignore-scripts
+
+# bcrypt precisa do build nativo (postinstall foi ignorado)
+RUN npm rebuild bcrypt
 
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
