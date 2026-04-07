@@ -1,12 +1,15 @@
-# Portainer + Traefik (mesmo padrão da rede externa "proxy").
-# Variáveis: BINANCE_API_HOST (hostname da API, sem https://), ENCRYPTION_KEY, etc.
+# Portainer + Traefik — use este arquivo com a raiz do stack = pasta backend
+# (Dockerfile e código ao lado deste yml). Contexto NÃO é ./backend.
+#
+# Se o stack no Portainer for só o YAML sem o código, use Git (repo inteiro) ou
+# imagem pré-construída: veja ../docker-compose.portainer.registry.yml
 
 version: "3.8"
 
 services:
   binance-api:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     image: binance-backend:latest
     container_name: binance-api
